@@ -48,6 +48,7 @@ weights = weights ./ repmat(sum(weights, 2), 1, N_regions);
 clearance_rate = normcdf(zscore(GBA)); 
 synthesis_rate = normcdf(zscore(SNCA));
 
+clearance = exp(-clearance_rate .* dt);
 synthesis = (synthesis_rate .* syn_control).*dt;
 
 gamma0 = 1 .* trans_rate ./ROIsize;
@@ -76,7 +77,7 @@ for t = 1:iter_max
     
     % paths towards regions
     % update moving
-    movOut = Pnor .* v ./ sconnLen ;  % longer path & smaller v = lower probability of moving out of paths
+    movOut = Pnor .* v ./ sconnLen;  % longer path & smaller v = lower probability of moving out of paths
     movOut(sconnMask) = 0;
     
     Pnor = Pnor - movOut .* dt + movDrt;
@@ -86,7 +87,7 @@ for t = 1:iter_max
     Rnor = Rnor + sum(movOut, 1)' .* dt -  sum(movDrt, 2);
     
     %%% growth process
-    Rnor = Rnor -  Rnor.* (1-exp(-clearance_rate.*dt))   + synthesis ;
+    Rnor = Rnor.*clearance + synthesis;
     
     if abs(Rnor - Rtmp) < (1e-7* Rtmp)
         break;
@@ -129,15 +130,13 @@ for t = 1:T_total
     Pmis(1:N_regions+1:end) = 0;
     Rmis = Rmis + sum(movOut_mis, 1)'.*dt - sum(movDrt_mis, 2);    
             
-    Rnor_cleared = Rnor .* (1-exp(-clearance_rate.* dt)) ;
-    Rmis_cleared = Rmis .* (1-exp(-clearance_rate.* dt))  ;
     % the probability of getting misfolded
     misProb = 1 - exp( -Rmis .* gamma0 .* dt ) ; % trans_rate: default
     % number of newly infected
-    N_misfolded = Rnor .* exp(-clearance_rate) .* misProb ;
+    N_misfolded = Rnor .* exp(-clearance_rate) .* misProb ; % is this supposed to be -clearance_rate.*dt?
     % update
-    Rnor = Rnor - Rnor_cleared - N_misfolded + synthesis;
-    Rmis = Rmis - Rmis_cleared + N_misfolded;
+    Rnor = Rnor.*clearance - N_misfolded + synthesis;
+    Rmis = Rmis.*clearance + N_misfolded;
 
     Rnor_all(:, t) = Rnor ;
     Rmis_all(:, t) = Rmis ;
