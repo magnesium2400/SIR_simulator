@@ -34,7 +34,9 @@ function [Rnor_all, Rmis_all, Rnor0, Pnor0, Pnor_all, Pmis_all] = SIRsimulator(N
 % make sure the diag is zero
 sconnDen(1:N_regions+1:end) = 0;
 sconnLen(1:N_regions+1:end) = 0;
-sconnMask = sconnLen == 0; 
+
+sconnMov = v ./ sconnLen .* dt; 
+sconnMov(sconnLen == 0) = 0; % longer path & smaller v = lower probability of moving out of paths
 
 % set the mobility pattern
 weights = sconnDen;
@@ -42,7 +44,8 @@ weights = (1 - prob_stay) .* weights + prob_stay .* diag(sum(weights, 2)) ;
 
 % multinomial distribution
 % element (i,j) is the probability of moving from region i to edge (i,j)
-weights = weights ./ repmat(sum(weights, 2), 1, N_regions);
+weights = weights ./ sum(weights, 2) .* dt;
+weights(1:N_regions+1:end) = 0; 
 
 % convert gene expression scores to probabilities
 clearance_rate = normcdf(zscore(GBA)); 
@@ -72,19 +75,15 @@ for t = 1:iter_max
     % element in kth row lth col denotes the number of proteins in region k
     % moving towards l
     movDrt = repmat(Rnor, 1, N_regions) .* weights;
-    movDrt = movDrt .* dt; 
-    movDrt(1:N_regions+1:end) = 0;
     
     % paths towards regions
     % update moving
-    movOut = Pnor .* v ./ sconnLen;  % longer path & smaller v = lower probability of moving out of paths
-    movOut(sconnMask) = 0;
+    movOut = Pnor .* sconnMov;
     
-    Pnor = Pnor - movOut .* dt + movDrt;
-    Pnor(1:N_regions+1:end) = 0;
+    Pnor = Pnor - movOut + movDrt;
     
     Rtmp = Rnor;
-    Rnor = Rnor + sum(movOut, 1)' .* dt -  sum(movDrt, 2);
+    Rnor = Rnor + sum(movOut, 1)' - sum(movDrt, 2);
     
     %%% growth process
     Rnor = Rnor.*clearance + synthesis;
@@ -105,30 +104,23 @@ display('misfolded alpha synuclein spreading')
 for t = 1:T_total
     %%% moving process
     % normal proteins: region -->> paths
-    movDrt_nor = repmat(Rnor, 1, N_regions) .* weights .* dt;
-    movDrt_nor(eye(N_regions) == 1) = 0;
+    movDrt_nor = repmat(Rnor, 1, N_regions) .* weights;
     
     % normal proteins: paths -->> regions
-    movOut_nor = Pnor .* v  ./ sconnLen; 
-    movOut_nor(sconnMask) = 0;
-    
+    movOut_nor = Pnor .* sconnMov;     
     
     % misfolded proteins: region -->> paths
-    movDrt_mis = repmat(Rmis, 1, N_regions) .* weights .* dt;
-    movDrt_mis(eye(N_regions) == 1) = 0;
+    movDrt_mis = repmat(Rmis, 1, N_regions) .* weights;
     
     % misfolded proteins: paths -->> regions
-    movOut_mis = Pmis .* v ./ sconnLen; 
-    movOut_mis(sconnMask) = 0;
+    movOut_mis = Pmis .* sconnMov; 
     
     % update regions and paths
-    Pnor = Pnor - movOut_nor.* dt + movDrt_nor; 
-    Pnor(1:N_regions+1:end) = 0;
-    Rnor = Rnor + sum(movOut_nor, 1)'.* dt - sum(movDrt_nor, 2);
+    Pnor = Pnor - movOut_nor + movDrt_nor; 
+    Rnor = Rnor + sum(movOut_nor, 1)' - sum(movDrt_nor, 2);
     
-    Pmis = Pmis - movOut_mis.*dt + movDrt_mis; 
-    Pmis(1:N_regions+1:end) = 0;
-    Rmis = Rmis + sum(movOut_mis, 1)'.*dt - sum(movDrt_mis, 2);    
+    Pmis = Pmis - movOut_mis + movDrt_mis; 
+    Rmis = Rmis + sum(movOut_mis, 1)' - sum(movDrt_mis, 2);    
             
     % the probability of getting misfolded
     misProb = 1 - exp( -Rmis .* gamma0 .* dt ) ; % trans_rate: default
