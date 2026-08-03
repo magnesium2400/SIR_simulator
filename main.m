@@ -36,3 +36,11 @@ ratio_cum = k2 * ratio_cum + k1 * (1-exp(-ratio * dt));
 
 % add all the increments across t
 simulated_atrophy = cumsum(ratio_cum, 2);
+
+%%% test
+expected = load('origresults.mat'); 
+assert(isequal(Rnor_all, expected.Rnor_all))
+assert(isequal(Rmis_all, expected.Rmis_all))
+assert(isequal(Rnor0, expected.Rnor0))
+
+
