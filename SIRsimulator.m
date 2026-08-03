@@ -54,7 +54,7 @@ synthesis_rate = normcdf(zscore(SNCA));
 clearance = exp(-clearance_rate .* dt);
 synthesis = (synthesis_rate .* syn_control).*dt;
 
-gamma0 = 1 .* trans_rate ./ROIsize;
+gamma0 = trans_rate ./ ROIsize .* dt;
 
 % store the number of normal/misfoled alpha-syn at each time step
 [Rnor_all, Rmis_all] = deal( zeros([N_regions, T_total]) );
@@ -69,6 +69,9 @@ gamma0 = 1 .* trans_rate ./ROIsize;
 iter_max = 1000000000;
 display('normal alpha synuclein growth')
 for t = 1:iter_max
+    
+    Rtmp = Rnor;
+    
     %%% moving process
     % regions towards paths
     % movDrt stores the number of proteins towards each region. i.e.
@@ -81,8 +84,6 @@ for t = 1:iter_max
     movOut = Pnor .* sconnMov;
 
     Pnor = Pnor - movOut + movDrt;
-
-    Rtmp = Rnor;
     Rnor = Rnor + sum(movOut, 1)' - sum(movDrt, 2);
 
     %%% growth process
@@ -123,15 +124,15 @@ for t = 1:T_total
     Rmis = Rmis + sum(movOut_mis, 1)' - sum(movDrt_mis, 2);
 
     % the probability of getting misfolded
-    misProb = 1 - exp( -Rmis .* gamma0 .* dt ) ; % trans_rate: default
+    misProb = 1 - exp(-Rmis .* gamma0) ; % trans_rate: default
     % number of newly infected
     N_misfolded = Rnor .* exp(-clearance_rate) .* misProb ; % is this supposed to be -clearance_rate.*dt?
 
     % update
     Rnor = Rnor.*clearance - N_misfolded + synthesis;
     Rmis = Rmis.*clearance + N_misfolded;
-    Rnor_all(:, t) = Rnor ;
-    Rmis_all(:, t) = Rmis ;
+    Rnor_all(:, t) = Rnor;
+    Rmis_all(:, t) = Rmis;
 
     % uncomment the following lines if you want outputs of alpha-syn in
     % paths
