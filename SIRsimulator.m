@@ -74,7 +74,7 @@ for t = 1:iter_max
     % movDrt stores the number of proteins towards each region. i.e.
     % element in kth row lth col denotes the number of proteins in region k
     % moving towards l
-    movDrt = repmat(Rnor, 1, N_regions) .* weights;
+    movDrt = Rnor .* weights;
 
     % paths towards regions
     % update moving
@@ -104,13 +104,13 @@ display('misfolded alpha synuclein spreading')
 for t = 1:T_total
     %%% moving process
     % normal proteins: region -->> paths
-    movDrt_nor = repmat(Rnor, 1, N_regions) .* weights;
+    movDrt_nor = Rnor .* weights;
 
     % normal proteins: paths -->> regions
     movOut_nor = Pnor .* sconnMov;
 
     % misfolded proteins: region -->> paths
-    movDrt_mis = repmat(Rmis, 1, N_regions) .* weights;
+    movDrt_mis = Rmis .* weights;
 
     % misfolded proteins: paths -->> regions
     movOut_mis = Pmis .* sconnMov;
