@@ -28,14 +28,14 @@ function [Rnor_all, Rmis_all, Rnor0, Pnor0, Pnor_all, Pmis_all] = SIRsimulator(N
 % could be memory-consuming)
 % Pmis_all: a N_regions * N_regions * T_total matrix, recording the number of misfolded alpha-syn in paths
 % could be memory-consuming)
-% Rnor0: a N_Regions * 1 vector, the population of normal agents in regions before pathogenic spreading 
-% Pnor0: a N_Regions * 1 vecotr, the population of normal agents in edges before pathogenic spreading 
+% Rnor0: a N_Regions * 1 vector, the population of normal agents in regions before pathogenic spreading
+% Pnor0: a N_Regions * 1 vecotr, the population of normal agents in edges before pathogenic spreading
 
 % make sure the diag is zero
 sconnDen(1:N_regions+1:end) = 0;
 sconnLen(1:N_regions+1:end) = 0;
 
-sconnMov = v ./ sconnLen .* dt; 
+sconnMov = v ./ sconnLen .* dt;
 sconnMov(sconnLen == 0) = 0; % longer path & smaller v = lower probability of moving out of paths
 
 % set the mobility pattern
@@ -45,10 +45,10 @@ weights = (1 - prob_stay) .* weights + prob_stay .* diag(sum(weights, 2)) ;
 % multinomial distribution
 % element (i,j) is the probability of moving from region i to edge (i,j)
 weights = weights ./ sum(weights, 2) .* dt;
-weights(1:N_regions+1:end) = 0; 
+weights(1:N_regions+1:end) = 0;
 
 % convert gene expression scores to probabilities
-clearance_rate = normcdf(zscore(GBA)); 
+clearance_rate = normcdf(zscore(GBA));
 synthesis_rate = normcdf(zscore(SNCA));
 
 clearance = exp(-clearance_rate .* dt);
@@ -64,30 +64,30 @@ gamma0 = 1 .* trans_rate ./ROIsize;
 [Rnor, Rmis] = deal(zeros(N_regions, 1)); % number of normal/misfolded alpha-syn in regions
 [Pnor, Pmis] = deal(zeros(N_regions)); % number of normal/misfolded alpha-syn in paths
 
-%% normal alpha-syn growth 
+%% normal alpha-syn growth
 % fill the network with normal proteins
 iter_max = 1000000000;
 display('normal alpha synuclein growth')
-for t = 1:iter_max   
+for t = 1:iter_max
     %%% moving process
     % regions towards paths
     % movDrt stores the number of proteins towards each region. i.e.
     % element in kth row lth col denotes the number of proteins in region k
     % moving towards l
     movDrt = repmat(Rnor, 1, N_regions) .* weights;
-    
+
     % paths towards regions
     % update moving
     movOut = Pnor .* sconnMov;
-    
+
     Pnor = Pnor - movOut + movDrt;
-    
+
     Rtmp = Rnor;
     Rnor = Rnor + sum(movOut, 1)' - sum(movDrt, 2);
-    
+
     %%% growth process
     Rnor = Rnor.*clearance + synthesis;
-    
+
     if abs(Rnor - Rtmp) < (1e-7* Rtmp)
         break;
     end
@@ -105,42 +105,40 @@ for t = 1:T_total
     %%% moving process
     % normal proteins: region -->> paths
     movDrt_nor = repmat(Rnor, 1, N_regions) .* weights;
-    
+
     % normal proteins: paths -->> regions
-    movOut_nor = Pnor .* sconnMov;     
-    
+    movOut_nor = Pnor .* sconnMov;
+
     % misfolded proteins: region -->> paths
     movDrt_mis = repmat(Rmis, 1, N_regions) .* weights;
-    
+
     % misfolded proteins: paths -->> regions
-    movOut_mis = Pmis .* sconnMov; 
-    
+    movOut_mis = Pmis .* sconnMov;
+
     % update regions and paths
-    Pnor = Pnor - movOut_nor + movDrt_nor; 
+    Pnor = Pnor - movOut_nor + movDrt_nor;
     Rnor = Rnor + sum(movOut_nor, 1)' - sum(movDrt_nor, 2);
-    
-    Pmis = Pmis - movOut_mis + movDrt_mis; 
-    Rmis = Rmis + sum(movOut_mis, 1)' - sum(movDrt_mis, 2);    
-            
+
+    Pmis = Pmis - movOut_mis + movDrt_mis;
+    Rmis = Rmis + sum(movOut_mis, 1)' - sum(movDrt_mis, 2);
+
     % the probability of getting misfolded
     misProb = 1 - exp( -Rmis .* gamma0 .* dt ) ; % trans_rate: default
     % number of newly infected
     N_misfolded = Rnor .* exp(-clearance_rate) .* misProb ; % is this supposed to be -clearance_rate.*dt?
+
     % update
     Rnor = Rnor.*clearance - N_misfolded + synthesis;
     Rmis = Rmis.*clearance + N_misfolded;
-
     Rnor_all(:, t) = Rnor ;
     Rmis_all(:, t) = Rmis ;
-    
+
     % uncomment the following lines if you want outputs of alpha-syn in
     % paths
     %Pnor_ave(:, :, t) = Pnor;
     %Pmis_ave(:, :, t) = Pmis;
-   
+
 end
 end
-
-
 
 
