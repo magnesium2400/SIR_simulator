@@ -34,6 +34,7 @@ function [Rnor_all, Rmis_all, Rnor0, Pnor0, Pnor_all, Pmis_all] = SIRsimulator(N
 % make sure the diag is zero
 sconnDen(eye(N_regions)==1) = 0;
 sconnLen(eye(N_regions)==1) = 0;
+sconnMask = sconnLen == 0; 
 
 % set the mobility pattern
 weights = sconnDen;
@@ -67,15 +68,15 @@ for t = 1:iter_max
     % moving towards l
     movDrt = repmat(Rnor, 1, N_regions) .* weights;
     movDrt = movDrt .* dt; 
-    movDrt(eye(N_regions)==1) = 0;
+    movDrt(1:N_regions+1:end) = 0;
     
     % paths towards regions
     % update moving
     movOut = Pnor .* v ./ sconnLen ;  % longer path & smaller v = lower probability of moving out of paths
-    movOut(sconnLen == 0) = 0;
+    movOut(sconnMask) = 0;
     
     Pnor = Pnor - movOut .* dt + movDrt;
-    Pnor(eye(N_regions)==1) = 0;
+    Pnor(1:N_regions+1:end) = 0;
     
     Rtmp = Rnor;
     Rnor = Rnor + sum(movOut, 1)' .* dt -  sum(movDrt, 2);
@@ -100,28 +101,28 @@ for t = 1:T_total
     %%% moving process
     % normal proteins: region -->> paths
     movDrt_nor = repmat(Rnor, 1, N_regions) .* weights .* dt;
-    movDrt_nor(eye(N_regions) == 1) = 0;
+    movDrt_nor(1:N_regions+1:end) = 0;
     
     % normal proteins: paths -->> regions
     movOut_nor = Pnor .* v  ./ sconnLen; 
-    movOut_nor(sconnLen == 0) = 0;
+    movOut_nor(sconnMask) = 0;
     
     
     % misfolded proteins: region -->> paths
     movDrt_mis = repmat(Rmis, 1, N_regions) .* weights .* dt;
-    movDrt_mis(eye(N_regions) == 1) = 0;
+    movDrt_mis(1:N_regions+1:end) = 0;
     
     % misfolded proteins: paths -->> regions
     movOut_mis = Pmis .* v ./ sconnLen; 
-    movOut_mis(sconnLen == 0) = 0;
+    movOut_mis(sconnMask) = 0;
     
     % update regions and paths
     Pnor = Pnor - movOut_nor.* dt + movDrt_nor; 
-    Pnor(eye(N_regions)==1) = 0;
+    Pnor(1:N_regions+1:end) = 0;
     Rnor = Rnor + sum(movOut_nor, 1)'.* dt - sum(movDrt_nor, 2);
     
     Pmis = Pmis - movOut_mis.*dt + movDrt_mis; 
-    Pmis(eye(N_regions)==1) = 0;
+    Pmis(1:N_regions+1:end) = 0;
     Rmis = Rmis + sum(movOut_mis, 1)'.*dt - sum(movDrt_mis, 2);    
             
     Rnor_cleared = Rnor .* (1-exp(-clearance_rate.* dt)) ;
