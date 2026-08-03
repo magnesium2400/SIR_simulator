@@ -48,6 +48,10 @@ weights = weights ./ repmat(sum(weights, 2), 1, N_regions);
 clearance_rate = normcdf(zscore(GBA)); 
 synthesis_rate = normcdf(zscore(SNCA));
 
+synthesis = (synthesis_rate .* syn_control).*dt;
+
+gamma0 = 1 .* trans_rate ./ROIsize;
+
 % store the number of normal/misfoled alpha-syn at each time step
 [Rnor_all, Rmis_all] = deal( zeros([N_regions, T_total]) );
 [Pnor_all, Pmis_all] = deal( zeros([N_regions, N_regions, T_total]) );
@@ -82,7 +86,7 @@ for t = 1:iter_max
     Rnor = Rnor + sum(movOut, 1)' .* dt -  sum(movDrt, 2);
     
     %%% growth process
-    Rnor = Rnor -  Rnor.* (1-exp(-clearance_rate.*dt))   + (synthesis_rate .* syn_control).*dt ;
+    Rnor = Rnor -  Rnor.* (1-exp(-clearance_rate.*dt))   + synthesis ;
     
     if abs(Rnor - Rtmp) < (1e-7* Rtmp)
         break;
@@ -128,12 +132,11 @@ for t = 1:T_total
     Rnor_cleared = Rnor .* (1-exp(-clearance_rate.* dt)) ;
     Rmis_cleared = Rmis .* (1-exp(-clearance_rate.* dt))  ;
     % the probability of getting misfolded
-    gamma0 = 1 .* trans_rate ./ROIsize;
     misProb = 1 - exp( -Rmis .* gamma0 .* dt ) ; % trans_rate: default
     % number of newly infected
     N_misfolded = Rnor .* exp(-clearance_rate) .* misProb ;
     % update
-    Rnor = Rnor - Rnor_cleared - N_misfolded + (synthesis_rate .* syn_control).*dt;
+    Rnor = Rnor - Rnor_cleared - N_misfolded + synthesis;
     Rmis = Rmis - Rmis_cleared + N_misfolded;
 
     Rnor_all(:, t) = Rnor ;
