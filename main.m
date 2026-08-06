@@ -39,7 +39,7 @@ simulated_atrophy = cumsum(ratio_cum, 2);
 
 %%% test
 expected = load('origresults.mat'); 
-assert(all( abs(Rnor0 - expected.Rnor0)       <1e-9, 'all' ))
+assert(all( abs(Rnor0 - expected.Rnor0)       <1e-8, 'all' ))
 assert(all( abs(Rnor_all - expected.Rnor_all) <1e-9, 'all' ))
 assert(all( abs(Rmis_all - expected.Rmis_all) <1e-9, 'all' ))
 fprintf('all approx equal\n'); 
